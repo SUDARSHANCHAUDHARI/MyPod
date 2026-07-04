@@ -6,16 +6,22 @@ Internal tool for running multiple Claude Code autonomous tasks in parallel, eac
 
 `autonomous.sh` (the existing Ralph Loop) runs `CLAUDE_TASKS.md` tasks **one at a time**, sequentially, in a single working directory. MyPod extends that to run several tasks **at once**, each in its own git worktree, so independent tasks across the 20+ app portfolio don't have to wait on each other.
 
-Pattern is adapted from [stablyai/orca](https://github.com/stablyai/orca) (MIT) — specifically its worktree-per-parallel-agent lifecycle management: `--no-track` + `push.autoSetupRemote` on create, and never force-deleting a branch that might hold real, unpushed work. See [docs/PLAN.html](docs/PLAN.html) for the full writeup (companion `docs/PLAN.md` is kept local-only, not tracked in this repo).
+Pattern is adapted from [stablyai/orca](https://github.com/stablyai/orca) (MIT) — specifically its worktree-per-parallel-agent lifecycle management: `--no-track` on create, and never force-deleting a branch that might hold real, unpushed work. See [docs/PLAN.html](docs/PLAN.html) for the full writeup (companion `docs/PLAN.md` is kept local-only, not tracked in this repo).
 
 ## Status
 
-Built and smoke-tested. Not yet wired into `~/.claude/autonomous.sh` — runs standalone.
+Built, smoke-tested, and wired into `~/.claude/autonomous.sh` as an opt-in flag.
 
 ## Usage
 
+Standalone:
 ```bash
 bash mypod.sh [max-parallel] [timeout-seconds]
+```
+
+Or via `autonomous.sh` (delegates entirely to `mypod.sh` — the sequential Ralph Loop stays the default):
+```bash
+bash ~/.claude/autonomous.sh --parallel [max-parallel] [timeout-seconds]
 ```
 
 Run from inside the target project's directory (same convention as `autonomous.sh`). Defaults: `max-parallel=3`, `timeout-seconds=1800` (30 min per task).
@@ -49,12 +55,16 @@ Built and tested against what's actually on this machine, not what the plan assu
 
 ```bash
 bash tests/smoke-test.sh
+bash tests/autonomous-integration-smoke.sh
 ```
 
-Runs mypod.sh against a throwaway local repo with `claude`/`gh` stubbed out (no network, no API
-cost) — one task that succeeds, one that fails, one that hangs past the timeout. Verifies: tasks
-are claimed/resolved correctly in `CLAUDE_TASKS.md`, worktrees are torn down after completion, and
-the successful task's commit survives in git history.
+`smoke-test.sh` runs mypod.sh against a throwaway local repo with `claude`/`gh` stubbed out (no
+network, no API cost) — one task that succeeds, one that fails, one that hangs past the timeout.
+Verifies: tasks are claimed/resolved correctly in `CLAUDE_TASKS.md`, worktrees are torn down after
+completion, and the successful task's commit survives in git history.
+
+`autonomous-integration-smoke.sh` verifies the `~/.claude/autonomous.sh --parallel` wiring itself —
+that the flag is recognized and delegates to `mypod.sh` with a task actually processed end to end.
 
 ## Author
 
