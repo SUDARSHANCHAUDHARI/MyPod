@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>MyPod — Plan</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2d3148;
+    --accent: #7c6cfc;
+    --text: #e8e9f0;
+    --muted: #8a8fa8;
+    --s: #3ecf8e;
+    --m: #f2c94c;
+    --l: #eb5757;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 32px;
+  }
+  header h1 { margin: 0 0 10px; font-size: 26px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+  }
+  nav {
+    position: sticky; top: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 32px;
+    display: flex; gap: 18px; flex-wrap: wrap;
+    z-index: 10;
+  }
+  nav a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  nav a:hover { color: var(--accent); }
+  main { max-width: 900px; margin: 0 auto; padding: 32px; }
+  section { margin-bottom: 40px; }
+  section h2 {
+    font-size: 18px;
+    border-left: 3px solid var(--accent);
+    padding-left: 10px;
+    margin-bottom: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  code, pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 13px;
+    color: #c9d1ff;
+  }
+  pre { padding: 12px; overflow-x: auto; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+  ol, ul { padding-left: 20px; }
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px 32px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .badge { display:inline-block; font-size:11px; padding:2px 8px; border-radius:6px; font-weight:600; }
+  .badge-s { background: var(--s); color:#062; }
+  .badge-status { background: var(--border); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MyPod — Plan</h1>
+  <div class="chips">
+    <span class="chip">Type: internal tool</span>
+    <span class="chip">Date: 2026-07-04</span>
+    <span class="chip">Status: built and smoke-tested</span>
+  </div>
+</header>
+
+<nav>
+  <a href="#origin">Origin</a>
+  <a href="#current">Current State</a>
+  <a href="#gap">Gap</a>
+  <a href="#recommendation">Recommendation</a>
+  <a href="#naming">Naming</a>
+  <a href="#impl">Implementation Notes</a>
+</nav>
+
+<main>
+
+<section id="origin">
+  <h2>Origin</h2>
+  <div class="card">
+    Investigated <a href="https://github.com/stablyai/orca" target="_blank">github.com/stablyai/orca</a>
+    — an 11.8k-star MIT-licensed Electron app ("AI Orchestrator") that runs multiple coding agents
+    (Claude Code, Codex, Cursor, etc.) in parallel, each in its own isolated git worktree.
+    <p class="muted">We are not cloning Orca's code or building a competing product — copying one
+    specific engineering pattern and adapting it into existing SudarshanTechLabs autonomous-task tooling.</p>
+  </div>
+</section>
+
+<section id="current">
+  <h2>Current State (before MyPod)</h2>
+  <ul>
+    <li><code>~/.claude/autonomous.sh</code> + <code>RALPH_PROMPT.md</code> run <code>CLAUDE_TASKS.md</code>
+      tasks <strong>sequentially</strong>, one at a time, in a single working directory.</li>
+    <li><code>dispatching-parallel-agents</code> skill exists for firing multiple agents at once,
+      but isn't wired into the autonomous task queue.</li>
+    <li>Claude Code's <code>Agent</code> tool already supports <code>isolation: "worktree"</code> —
+      it can create an isolated git worktree per agent call automatically.</li>
+  </ul>
+</section>
+
+<section id="gap">
+  <h2>The Gap</h2>
+  <p>No safe, race-free worktree lifecycle management for running several autonomous tasks
+  <strong>at once</strong> against the same repo. Orca's <code>src/main/git/worktree.ts</code>
+  solves exactly this:</p>
+  <div class="card">
+    <strong>1. Creation</strong> — <code>git worktree add --no-track -b &lt;branch&gt;</code>
+    (never inherits the base branch's upstream, so <code>git status</code> doesn't misreport
+    "behind" on an unpublished branch), plus setting <code>push.autoSetupRemote=true</code> once
+    so the agent's first <code>git push</code> just works.
+  </div>
+  <div class="card">
+    <strong>2. Removal</strong> — delete the branch with <code>-d</code> (safe, refuses unmerged
+    commits) by default. Only use <code>-D</code> (force) to roll back a worktree whose creation
+    just failed — never to clean up a worktree that might contain real agent work. Falls back to
+    a squash-merge detection check (<code>rev-list</code>/<code>merge-base</code>) before allowing
+    a delete that <code>-d</code> would otherwise refuse.
+  </div>
+  <div class="card">
+    <strong>3. Concurrency</strong> — dedupe concurrent <code>git worktree list</code> scans per
+    repo path (in-flight promise map) — matters once several parallel agents poll status on the
+    same repo at once.
+  </div>
+</section>
+
+<section id="recommendation">
+  <h2>Recommendation</h2>
+  <div class="card">
+    Rewrite <code>autonomous.sh</code> to fan out N pending <code>CLAUDE_TASKS.md</code> tasks
+    across N parallel <code>Agent</code> tool calls (<code>isolation: "worktree"</code>) instead
+    of one sequential <code>claude --print</code> loop, applying Orca's three safety rules above
+    to whatever wrapper manages worktree create/remove.
+  </div>
+</section>
+
+<section id="naming">
+  <h2>Naming</h2>
+  <p>Project named <strong>MyPod</strong> — a "pod" of parallel agents, kept distinct from Orca's
+  own branding. Repo scaffolded at <code>AIProjects/MyPod/</code>.</p>
+</section>
+
+<section id="impl">
+  <h2>Implementation Notes</h2>
+  <p><span class="badge badge-status">built and smoke-tested</span></p>
+  <div class="card">
+    <strong>No Bash ≥ 4 requirement, after all.</strong> The plan assumed <code>wait -n</code> would
+    need a Homebrew Bash install. Checked instead: this machine has only stock Bash 3.2, no Homebrew
+    bash. <code>mypod.sh</code> dispatches jobs and waits on the explicit pid list instead — fully
+    portable to 3.2, no version bump needed.
+  </div>
+  <div class="card">
+    <strong>No <code>timeout</code>/<code>gtimeout</code> either</strong> — genuinely absent on this
+    machine, not just a Linux-only assumption. <code>lib/run-task.sh</code> implements its own
+    timeout: run the command in its own process group (<code>set -m</code>) and kill the negative
+    PID on timeout, which reaps any children the agent spawns too, not just the top-level process.
+  </div>
+  <div class="risk">
+    <strong>Bug found during smoke testing:</strong> the <code>no_commits</code> check used
+    <code>git log ... | grep -q .</code> in a script with <code>set -o pipefail</code>. grep -q
+    closes its input on first match; if git log still had more to write, it got SIGPIPE, and
+    pipefail reported the whole pipeline as failed — misclassifying a task with real commits as
+    <code>no_commits</code> and discarding its worktree. Fixed with <code>git rev-list --count</code>
+    (no pipe, nothing to race). The test suite had the same anti-pattern in four assertions — fixed
+    the same way there.
+  </div>
+  <div class="card">
+    <strong>Not done:</strong> not wired into <code>~/.claude/autonomous.sh</code> — runs standalone
+    via <code>bash mypod.sh</code>. That integration is a deliberate follow-up once it's proven
+    itself in real use.
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Generated 2026-07-04 · companion to <a href="PLAN.md">PLAN.md</a>
+</footer>
+
+</body>
+</html>

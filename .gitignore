@@ -1,0 +1,38 @@
+# User/plugin config — personal data, never commit
+.claude-plugin-config.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Logs
+*.log
+
+# Node/Web
+node_modules/
+.env
+.env.local
+dist/
+.next/
+
+# Secrets
+*.env
+secrets.*
+credentials.*
+
+# Planning docs stay local — internal tool, not for public push
+# (docs/PLAN.md is also blocked by the global pre-commit hook's PLAN\.md
+# pattern; the HTML companion is the public-facing artifact, kept tracked)
+docs/internal/
+docs/PLAN.md
+.flow/
