@@ -1,5 +1,7 @@
 # MyPod
 
+By [Sudarshan Chaudhari](https://github.com/SUDARSHANCHAUDHARI) — SudarshanTechLabs
+
 Internal tool for running multiple Claude Code autonomous tasks in parallel, each in its own isolated git worktree.
 
 ## Why
