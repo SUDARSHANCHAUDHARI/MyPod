@@ -1,8 +1,8 @@
 # lib/worktree.sh — safe git worktree create/remove.
 #
 # Pattern adapted from stablyai/orca (MIT) src/main/git/worktree.ts: create
-# with --no-track + push.autoSetupRemote so an agent's first `git push` just
-# works, and never destroy a worktree/branch that might hold real agent work.
+# with --no-track so an unpublished branch doesn't misreport git status, and
+# never destroy a worktree/branch that might hold real agent work.
 #
 # Meant to be `source`d, not executed — no `set` calls here so the caller's
 # shell options (e.g. mypod.sh deliberately runs without -e) aren't clobbered.
@@ -11,20 +11,16 @@
 # Creates a linked worktree on a new branch off base_branch. Uses --no-track
 # so the new branch doesn't inherit base_branch's upstream — otherwise
 # `git status` inside the worktree would misreport "behind" against a branch
-# the agent hasn't published yet. Then enables push.autoSetupRemote (only if
-# unset at every scope) so a plain `git push` from the worktree auto-creates
-# origin/<branch> instead of erroring for lack of upstream.
+# the agent hasn't published yet. (Orca's own version also sets
+# push.autoSetupRemote here, for a human typing a bare `git push` in a
+# terminal; MyPod's lib/run-task.sh always pushes with an explicit -u, so
+# that config write would do nothing here — and writing it from several
+# parallel worktrees at once, all sharing the same underlying .git/config,
+# was the source of an intermittent "could not lock config file" race. Left
+# out entirely rather than hardened, since it's provably unused.)
 safe_add_worktree() {
   local repo_path="$1" worktree_path="$2" branch="$3" base_branch="$4"
-
-  if ! git -C "$repo_path" worktree add --no-track -b "$branch" "$worktree_path" "$base_branch"; then
-    return 1
-  fi
-
-  if ! git -C "$worktree_path" config --get push.autoSetupRemote >/dev/null 2>&1; then
-    git -C "$worktree_path" config --local push.autoSetupRemote true || true
-  fi
-  return 0
+  git -C "$repo_path" worktree add --no-track -b "$branch" "$worktree_path" "$base_branch"
 }
 
 # safe_remove_worktree <repo_path> <worktree_path> <branch>
