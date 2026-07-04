@@ -66,6 +66,10 @@ completion, and the successful task's commit survives in git history.
 `autonomous-integration-smoke.sh` verifies the `~/.claude/autonomous.sh --parallel` wiring itself —
 that the flag is recognized and delegates to `mypod.sh` with a task actually processed end to end.
 
+## License
+
+MIT — see [LICENSE](LICENSE).
+
 ## Author
 
-SudarshanTechLabs — private/internal tool.
+Built by **Sudarshan Chaudhari** — SudarshanTechLabs.
