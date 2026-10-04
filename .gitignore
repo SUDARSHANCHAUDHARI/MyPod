@@ -36,3 +36,5 @@ credentials.*
 docs/internal/
 docs/PLAN.md
 .flow/
+
+repoguard-results/
