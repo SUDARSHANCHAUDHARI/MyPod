@@ -36,3 +36,6 @@ credentials.*
 docs/internal/
 docs/PLAN.md
 .flow/
+
+# repoguard scan output
+repoguard-results/
